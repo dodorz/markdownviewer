@@ -23,6 +23,17 @@ static __declspec(thread) int in_table = 0;
 static __declspec(thread) int table_col_count = 0;
 static __declspec(thread) int embed_images = 1;
 
+// Width (twips) of the horizontal-rule line; set from the window content width.
+static __declspec(thread) int hr_rule_width_twips = 8000;
+
+void
+markdown2rtf_set_hr_width_twips(int twips)
+{
+	if (twips > 0)
+		hr_rule_width_twips = twips;
+}
+
+
 typedef struct PendingImageTag {
 	char* marker;
 	char* path;
@@ -1263,7 +1274,14 @@ process_html_tag(char** pos_ptr)
 	}
 	
 	if (strcmp(html_tag_name, "hr") == 0) {
-		append_buffer("\\pard\\sa150\\sl0\\slmult0 {\\strike \\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab} \\par\\pard\n");
+		char hrline[1024];
+		int n = hr_rule_width_twips / 720;
+		if (n < 1) n = 1;
+		if (n > 200) n = 200;
+		int off = sprintf_s(hrline, sizeof(hrline), "\\pard\\sa150\\sl0\\slmult0 {\\strike ");
+		for (int k = 0; k < n; k++) off += sprintf_s(hrline + off, sizeof(hrline) - off, "\\tab");
+		sprintf_s(hrline + off, sizeof(hrline) - off, "} \\par\\pard\\n");
+		append_buffer(hrline);
 		*pos_ptr = pos + tag_len;
 		return 1;
 	}
@@ -1778,9 +1796,14 @@ markdown2rtf_ex(const char* md, const char* img_path, int enable_images)
 				append_buffer("\\par\\pard\n");
 				prev_list_depth = 0;
 			}
-			// Use strikethrough spaces to simulate a horizontal line (widely compatible)
-			// Using 20 tabs to cover most window widths
-			append_buffer("\\pard\\sa150\\sl0\\slmult0 {\\strike \\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab\\tab} \\par\\pard\n");
+			char hrline[1024];
+			int n = hr_rule_width_twips / 720;
+			if (n < 1) n = 1;
+			if (n > 200) n = 200;
+			int off = sprintf_s(hrline, sizeof(hrline), "\\pard\\sa150\\sl0\\slmult0 {\\strike ");
+			for (int k = 0; k < n; k++) off += sprintf_s(hrline + off, sizeof(hrline) - off, "\\tab");
+			sprintf_s(hrline + off, sizeof(hrline) - off, "} \\par\\pard\\n");
+			append_buffer(hrline);
 			free(line);
 			continue;
 		}

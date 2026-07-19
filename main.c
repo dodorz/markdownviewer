@@ -43,6 +43,7 @@ char* markdown2rtf_ex(const char* md, const char* img_path, int enable_images);
 void markdown_clear_pending_images(void);
 int markdown_get_pending_image_count(void);
 const char* markdown_get_pending_image_marker(int index);
+void markdown2rtf_set_hr_width_twips(int twips);
 const char* markdown_get_pending_image_path(int index);
 
 // Global Variables:
@@ -1931,6 +1932,22 @@ RenderMarkdownDocument(const char* markdown, const char* imgPath, int enableImag
 	if (doc == NULL)
 		return NULL;
 
+	// Size the horizontal rule to the actual content width (twips) so it
+	// always fills exactly one row and never wraps.
+	{
+		int wpx = GetRichEditContentWidthPx(hRichEdit);
+		int wt = 8000;
+		if (wpx > 0) {
+			HDC hdc = GetDC(hRichEdit);
+			int dpi = hdc ? GetDeviceCaps(hdc, LOGPIXELSX) : 96;
+			if (dpi <= 0) dpi = 96;
+			ReleaseDC(hRichEdit, hdc);
+			wt = (int)((LONGLONG)wpx * 1440 / dpi);
+		}
+		if (wt < 2000) wt = 2000;
+		if (wt > 15840) wt = 15840;
+		markdown2rtf_set_hr_width_twips(wt);
+	}
 	doc->rtf = markdown2rtf_ex(markdown, imgPath, enableImages);
 	if (doc->rtf == NULL) {
 		free(doc);
